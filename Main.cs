@@ -60,9 +60,7 @@ namespace xorc
 		//the first genome in a species list is the one used to compare for new genomes
 		public List<List<int>> species;
 
-		//species ranking
-		public int[][] speciesRanking;
-		public int[] speciesRankingNumber;
+
 
 		public List<double> speciesLastMaxFitness;
 		public List<int> speciesLastFitnessImprovement;
@@ -70,6 +68,7 @@ namespace xorc
 		public double allSpeciesLastMaxFitness = -9999.0;
 		public int allSpeciesLastFitnessImprovement = 0;
 
+		public int startingIndexOfNewGenomes = 0;
 
 		public Random rand = new Random();
 		public static void Main (string[] args)
@@ -108,37 +107,13 @@ namespace xorc
 			//initialize species
 			species = new List<List<int>> ();
 
-			speciesRanking = new int[5][];
-			for (int i=0; i<5; i++) {
-				speciesRanking[i] = new int[2];
-			}
-			speciesRanking[0][0] = 0;
-			speciesRanking[0][1] = 0;
 
-			speciesRanking[1][0] = 0;
-			speciesRanking[1][1] = 1;
-
-			speciesRanking[2][0] = 1;
-			speciesRanking[2][1] = 1;
-
-			speciesRanking[3][0] = 1;
-			speciesRanking[3][1] = 2;
-
-			speciesRanking[4][0] = 0;
-			speciesRanking[4][1] = 3;
-
-			speciesRankingNumber = new int[5];
-			speciesRanking [0] = 1;
-			speciesRanking [1] = 2;
-			speciesRanking [2] = 4;
-			speciesRanking [3] = 6;
-			speciesRanking [4] = 10;
 		}
 
 		//One simulation loop (one generation)
 		public static void loop(){
 			//split genomes into species
-			for(int i=0;i<networks.Count;i++){
+			for(int i=startingIndexOfNewGenomes;i<networks.Count;i++){
 				int speciesIndex = -1;
 				for(int j=0;j<species.Count;j++){
 					if(classification(i, species[j][0]) < currentCDT){
@@ -190,18 +165,19 @@ namespace xorc
 				}
 			}
 
+			int remainingNumberOfGenomes = 0;
 			//delete poor performing networks in a species
 			for (int i=0; i<species.Count; i++) {
 				int speciesDeleted = (int)(((double) species[i].Count) * (1.0 - speciesKeep));
 				for (int j=0; j<speciesDeleted; j++) {
 					species[i].RemoveAt(species[i].Count - 1);
 				}
+				remainingNumberOfGenomes += species[i].Count;
 			}
 
 
-
 			double populationAverageFitness = 0.0;
-			//order the average fitness of species
+			//calculate the average fitness of species
 			List<int> speciesAverageFitness = new List<int> ();
 			for (int i=0; i<species.Count; i++) {
 				double sum = 0.0;
@@ -214,7 +190,61 @@ namespace xorc
 
 			populationAverageFitness /= ((double)networks.Count);
 
+			if ((populationAverageFitness / allSpeciesLastMaxFitness) > 1.0 + allSpeciesImprovementThreshold) {
+				allSpeciesLastFitnessImprovement = 0;
+				allSpeciesLastMaxFitness = populationAverageFitness;
+			} else {
+				allSpeciesLastFitnessImprovement++;
+			}
 
+			//average population has not improved for a while, kill off all but top 2 species
+			if (allSpeciesLastFitnessImprovement > allSpeciesLastLimit) {
+				for(int i=0;i<species.Count - 2;i++){
+					species.RemoveAt(species.Count - 1);
+				}
+				//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				//remove all the species last fitness
+				//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			}
+
+			//get ranking of species
+			int speciesRanking = new int[species.Count];
+			for (int i=0; i<species.Count; i++) {
+				speciesRanking [i] = -1;
+			}
+			for (int i=0; i<species.Count; i++) {
+				double maxSpeciesFitness = -9999.0;
+				double maxSpeciesIndex = -1;
+				for (int j=0; j<species.Count; j++) {
+					if(speciesRanking[j] == -1){
+						if(speciesAverageFitness[j] > maxSpeciesFitness){
+							maxSpeciesFitness = speciesAverageFitness[j];
+							maxSpeciesIndex = j;
+						}
+					}
+				}
+				speciesRanking[maxSpeciesIndex] = species.Count - i;
+			}
+
+			double numberOfChildren = ((double)populationSize - ((double) remainingNumberOfGenomes));
+			List<Network> childrenGenomes = new List<Network> ();
+			//breed new genomes
+			for (int i=0; i<species.Count; i++) {
+				int speciesChildrenN = getChildrenN((double)speciesRanking[i], (double)species.Count, numberOfChildren);
+				for(int j=0;j<speciesChildrenN;j++){
+					int parent0 = getParent(species[i].Count);
+					int parent1 = getParent(species[i].Count);
+					//breed(parent0, parent1)
+					//add new genome to childrenGenomes
+				}
+			}
+
+
+			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			//remove deleted genomes and update species list
+			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			
+			
 		}
 
 		//deprecated
@@ -317,6 +347,30 @@ namespace xorc
 							 xorFitnessSingle(1.0, 1.0, networks[index].calculateOutput(t3));
 			return fitness;
 		}
+
+		private int getParent(int total){
+			int totalRandoms = 0;
+			if (total % 2 == 0) {
+				totalRandoms = (total / 2) * (total + 1);
+			} else {
+				totalRandoms = ((total+1)/2) * total;
+			}
+			totalRandoms += totalRandoms / 3;
+			int randomInt = rand.Next (1, totalRandoms+1);
+			int sum = 0;
+			for (int i=1; i<total+1; i++) {
+				sum += i;
+				if (randomInt <= i) {
+					return (total - i);
+				}
+			}
+			return 0;
+		}
+
+		private int getChildrenN(double ranking, double total, double totalChildren){
+			return (int)(ranking / (total * (total + 1.0) / 2.0) * totalChildren);
+		}
+
 
 		//calculates the fitness of a single xor case
 		private double xorFitnessSingle(double inputA, double inputB, double output)
