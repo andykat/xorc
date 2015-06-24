@@ -13,29 +13,32 @@ namespace xorc
 		public int maxSpeciesN = 30;
 		public int minSpeciesN = 5;
 
-
+		//number of allowable generations for evolution speciation
 		public int allSpeciesLastLimit = 40;
 		public int speciesLastLimit = 30;
 		public double allSpeciesImprovementThreshold = 0.001;
 		public double speciesImprovementThreshold = 0.001;
 
-		//classification
+		//species classification
 		public double weightWeight = 0.4;
 		public double excessWeight = 1.0;
 		public double disjointWeight = 1.0;
+		//classification differences are adjusted to keep the number of different Species stable.
 		public double classificationDifferenceThreshold = 1.0;
 		public double currentCDT = 1.0;
 		public double cdtMultiplier = 0.1;
 
+		//competition
+		public double speciesKeep = 0.4; //percent of networks in a species that are not killed each generation. These species are also the ones that breed the new generation.
 
-		//mutation chances
-		public double MutateConnectionsChance = 0.25;
+		//all different types of mutation chances
+		public double mutateConnectionsChance = 0.25; //??
 		public double perturbChance = 0.90;
-		public double CrossoverChance = 0.75;
-		public double LinkMutationChance = 2.0;
-		public double NodeMutationChance = 0.50;
-		public double DisableMutationChance = 0.4;
-		public double EnableMutationChance = 0.2;
+		public double crossoverChance = 0.75;
+		public double linkMutationChance = 2.0;
+		public double nodeMutationChance = 0.50;
+		public double disableMutationChance = 0.4;
+		public double enableMutationChance = 0.2;
 
 
 
@@ -132,6 +135,7 @@ namespace xorc
 			speciesRanking [4] = 10;
 		}
 
+		//One simulation loop (one generation)
 		public static void loop(){
 			//split genomes into species
 			for(int i=0;i<networks.Count;i++){
@@ -186,6 +190,16 @@ namespace xorc
 				}
 			}
 
+			//delete poor performing networks in a species
+			for (int i=0; i<species.Count; i++) {
+				int speciesDeleted = (int)(((double) species[i].Count) * (1.0 - speciesKeep));
+				for (int j=0; j<speciesDeleted; j++) {
+					species[i].RemoveAt(species[i].Count - 1);
+				}
+			}
+
+
+
 			double populationAverageFitness = 0.0;
 			//order the average fitness of species
 			List<int> speciesAverageFitness = new List<int> ();
@@ -203,7 +217,7 @@ namespace xorc
 
 		}
 
-
+		//deprecated
 		public static void testNetwork(){
 			Network a = new Network ();
 			for (int i=0; i<7; i++) {
@@ -267,6 +281,7 @@ namespace xorc
 			return ((weightWeight * weightDifference) + (disjointWeight * disjointN + excessWeight * excessN) / bigger (networks [netIndexA].edges.Count, networks [netIndexB].edges.Count));
 		}
 
+		//keeps indexes on the innovation count of each gene. New genes increase innovation
 		private int getInnovation(int input, int output){
 			for (int i=0; i<innovationInputs.Count; i++) {
 				if(input == innovationInputs[i]){
@@ -280,6 +295,8 @@ namespace xorc
 			innovationOutputs.Add (output);
 			return (innovationInputs.Count - 1);
 		}
+
+		//calculates the different between the ideal answer from all four possible cases
 		private double xorFitness(int index)
 		{
 			List<double> t0 = new List<double> ();
@@ -300,6 +317,8 @@ namespace xorc
 							 xorFitnessSingle(1.0, 1.0, networks[index].calculateOutput(t3));
 			return fitness;
 		}
+
+		//calculates the fitness of a single xor case
 		private double xorFitnessSingle(double inputA, double inputB, double output)
 		{
 			double answer = inputA + inputB;

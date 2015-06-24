@@ -76,6 +76,8 @@ namespace xorc
 
 			return true;
 		}
+
+		//checks if adding/enabling this edge creates a cycle
 		public bool checkEdge(int input, int output)
 		{
 			//find if this edge leads to a cycle
@@ -111,6 +113,8 @@ namespace xorc
 
 			return true;
 		}
+
+		//calculates the output values of the network from a list of inputs
 		public List<double> calculateOutput(List<double> inputs)
 		{
 			List<double> outputs = new List<double>();
