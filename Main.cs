@@ -13,7 +13,7 @@ namespace xorc
 		public int maxSpeciesN = 30;
 		public int minSpeciesN = 5;
 
-		//number of allowable generations for evolution speciation
+		//number of allowable generations for protecting innovation through speciation
 		public int allSpeciesLastLimit = 40;
 		public int speciesLastLimit = 30;
 		public double allSpeciesImprovementThreshold = 0.001;
