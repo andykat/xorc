@@ -8,13 +8,11 @@ namespace xorc
 		public int inputN = 2;
 		public int outputN = 1;
 		public int populationSize = 200;
-		public double speciesSizeDifference = 0.5;
+
 		//number of species limits
 		public int maxSpeciesN = 30;
 		public int minSpeciesN = 5;
-		
-		public double allSpeciesLastMaxFitness = -9999.0;
-		public int allSpeciesLastFitnessImprovement = 0;
+
 
 		public int allSpeciesLastLimit = 40;
 		public int speciesLastLimit = 30;
@@ -51,6 +49,7 @@ namespace xorc
 		/// /// /// ///////////////////////////////////////////////////////////
 		/// /// /// ///////////////////////////////////////////////////////////
 
+
 		public List<Network> networks;
 		public List<int> innovationInputs;
 		public List<int> innovationOutputs;
@@ -65,6 +64,8 @@ namespace xorc
 		public List<double> speciesLastMaxFitness;
 		public List<int> speciesLastFitnessImprovement;
 
+		public double allSpeciesLastMaxFitness = -9999.0;
+		public int allSpeciesLastFitnessImprovement = 0;
 
 
 		public Random rand = new Random();
