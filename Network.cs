@@ -17,6 +17,7 @@ namespace xorc
 		public List<int> inputNeuronIndexes;
 		public List<int> outputNeuronIndexes;
 		public List<Edge> edges;
+		public double fitness = 0.0;
 		private int finishedNeuronCounter = -9999;
 		public Network(){
 			neurons = new List<Neuron> ();
@@ -35,7 +36,7 @@ namespace xorc
 			outputNeuronIndexes.Add (index);
 		}
 		
-		public bool addEdge(int input, int output, double weight){
+		public bool addEdge(int input, int output, double weight, int innovation){
 			//find if this edge leads to a cycle
 			List<int> queue = new List<int> ();
 			queue.Add (output);
@@ -68,14 +69,48 @@ namespace xorc
 			}
 			
 			//add edge
-			Edge e = new Edge (input, output, weight);
+			Edge e = new Edge (input, output, weight, true, innovation);
 			edges.Add (e);
 			neurons [input].addOutput (e);
 			neurons [output].addInput (e);
 
 			return true;
 		}
-		
+		public bool checkEdge(int input, int output)
+		{
+			//find if this edge leads to a cycle
+			List<int> queue = new List<int> ();
+			queue.Add (output);
+			while (queue.Count>0) {
+				int cIndex = queue[0];
+				queue.RemoveAt(0);
+				
+				if(cIndex == input)
+				{
+					//creates cycle
+					return false;
+				}
+				
+				for(int i=0;i<neurons[cIndex].outputEdges.Count;i++){
+					queue.Add(neurons[cIndex].outputEdges[i].outNeuron);
+				}
+			}
+			
+			//an input cannot be an output
+			for (int i=0; i<inputNeuronIndexes.Count; i++) {
+				if(output == inputNeuronIndexes[i]){
+					return false;
+				}
+			}
+			//an output cannot be an input
+			for (int i=0; i<outputNeuronIndexes.Count; i++) {
+				if(input == outputNeuronIndexes[i]){
+					return false;
+				}
+			}
+
+			return true;
+		}
 		public List<double> calculateOutput(List<double> inputs)
 		{
 			List<double> outputs = new List<double>();
@@ -102,6 +137,9 @@ namespace xorc
 				
 				//add value along the output edges
 				for(int i=0;i<neurons[pIndex].outputEdges.Count;i++){
+					if(!neurons[pIndex].outputEdges[i].isEnabled){
+						continue;
+					}
 					int outIndex = neurons[pIndex].outputEdges[i].outNeuron;
 					neurons[outIndex].addValue(neurons[pIndex].value, neurons[pIndex].outputEdges[i].weight);
 					
