@@ -33,11 +33,12 @@ namespace xorc
 
 		//all different types of mutation chances
 		public double mutateConnectionsChance = 0.25; //??
-		public double perturbChance = 0.90;
+		public double perturbChance = 0.75;
+		public double perturbPercent = 0.2;
 		public double crossoverChance = 0.75;
-		public double linkMutationChance = 2.0;
-		public double nodeMutationChance = 0.50;
-		public double disableMutationChance = 0.4;
+		public double linkMutationChance = 0.05;
+		public double nodeMutationChance = 0.05;
+		public double disableMutationKeep = 0.75;
 		public double enableMutationChance = 0.2;
 
 
@@ -234,7 +235,16 @@ namespace xorc
 				for(int j=0;j<speciesChildrenN;j++){
 					int parent0 = getParent(species[i].Count);
 					int parent1 = getParent(species[i].Count); 
-					//breed(parent0, parent1)
+
+					List<Edge> childEdges;
+					if(parent0 < parent1){
+						childEdges = breed(species[i][parent0], species[i][parent1]);
+					}
+					else{
+						childEdges = breed(species[i][parent1], species[i][parent0]);
+					}
+
+
 					//add new genome to childrenGenomes
 				}
 			}
@@ -262,36 +272,62 @@ namespace xorc
 			
 		}
 
-		//deprecated
-		public static void testNetwork(){
-			Network a = new Network ();
-			for (int i=0; i<7; i++) {
-				Neuron n = new Neuron ();
-				a.addNeuron (n);
+		private List<Edge> breed(int parentA, int parentB)
+		{
+			List<Edge> childEdges = new List<Edge>();
+			int AIndex = 0;
+			int BIndex = 0;
+
+			while (AIndex < networks[parentA].edges.Count && BIndex < networks[parentB].edges.Count) {
+				if(networks[parentA].edges[AIndex].innovation == networks[parentB].edges[BIndex].innovation){
+					if(rand.Next(0,2) == 0){
+						childEdges.Add (networks[parentA].edges[AIndex]);
+					}
+					else{
+						childEdges.Add (networks[parentB].edges[BIndex]);
+					}
+					AIndex++;
+					BIndex++;
+				}
+				else if(networks[parentA].edges[AIndex].innovation > networks[parentB].edges[BIndex].innovation){
+					BIndex++;
+				}
+				else{
+					childEdges.Add (networks[parentA].edges[AIndex]);
+					AIndex++;
+				}
+			}
+			//excess edges left over from dominant parent
+			if (BIndex == networks [parentB].edges.Count) {
+				for (int i=AIndex; i<networks[parentA].edges.Count; i++) {
+					childEdges.Add (networks [parentA].edges [i]);
+				}
 			}
 
-			a.addInput (0);
-			a.addInput (1);
-			a.addInput (2);
-			a.addOutput (3);
-			bool x = a.addEdge (1, 4, 0.1);
-			x = a.addEdge (2, 4, 0.2);
-			x = a.addEdge (1, 5, 0.3);
-			x = a.addEdge (0, 5, 0.4);
-			x = a.addEdge (4, 5, 0.5);
-			x = a.addEdge (5, 6, 0.6);
-			x = a.addEdge (6, 3, 0.7);
-
-			List<double> inputs = new List<double> ();
-			inputs.Add (-1);
-			inputs.Add (0.5);
-			inputs.Add (1.0);
-			List<double> outputs = a.calculateOutput (inputs);
-			for (int i=0; i<outputs.Count; i++) {
-				Console.WriteLine ("i:" + outputs [i]);
+			//perturb it
+			for (int i=0; i<childEdges.Count; i++) {
+				double rand01 = rand.NextDouble();
+				//perturb it! sore aru
+				if(rand01 < perturbChance){
+					childEdges[i].weight = childEdges[i].weight * (1.0 + (rand.NextDouble()*perturbPercent * 2.0 - perturbPercent));
+				}
 			}
-			Console.WriteLine ("done");
+			
+			//new links
+			double rand2 = rand.NextDouble();
+			if (rand2 < linkMutationChance) {
+
+			}
+			
+			//new node
+			rand2 = rand.NextDouble ();
+			if (rand2 < nodeMutationChance) {
+
+			}
+
+			return childEdges;
 		}
+
 
 		//returns how far apart the two genomes are
 		private int classification(int netIndexA, int netIndexB){
@@ -370,7 +406,7 @@ namespace xorc
 			} else {
 				totalRandoms = ((total+1)/2) * total;
 			}
-			totalRandoms += totalRandoms / 3;
+			totalRandoms += totalRandoms / 4;
 			int randomInt = rand.Next (1, totalRandoms+1);
 			int sum = 0;
 			for (int i=1; i<total+1; i++) {
@@ -408,6 +444,43 @@ namespace xorc
 				return a;
 			}
 			return b;
+		}
+		private int smaller(int a, int b){
+			if (a < b) {
+				return a;
+			}
+			return b;
+		}
+
+		//deprecated
+		public static void testNetwork(){
+			Network a = new Network ();
+			for (int i=0; i<7; i++) {
+				Neuron n = new Neuron ();
+				a.addNeuron (n);
+			}
+			
+			a.addInput (0);
+			a.addInput (1);
+			a.addInput (2);
+			a.addOutput (3);
+			bool x = a.addEdge (1, 4, 0.1);
+			x = a.addEdge (2, 4, 0.2);
+			x = a.addEdge (1, 5, 0.3);
+			x = a.addEdge (0, 5, 0.4);
+			x = a.addEdge (4, 5, 0.5);
+			x = a.addEdge (5, 6, 0.6);
+			x = a.addEdge (6, 3, 0.7);
+			
+			List<double> inputs = new List<double> ();
+			inputs.Add (-1);
+			inputs.Add (0.5);
+			inputs.Add (1.0);
+			List<double> outputs = a.calculateOutput (inputs);
+			for (int i=0; i<outputs.Count; i++) {
+				Console.WriteLine ("i:" + outputs [i]);
+			}
+			Console.WriteLine ("done");
 		}
 	}
 }
