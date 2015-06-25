@@ -56,7 +56,7 @@ namespace xorc
 		public List<Network> networks;
 		public List<int> innovationInputs;
 		public List<int> innovationOutputs;
-
+		public int neuronN;
 		//the first genome in a species list is the one used to compare for new genomes
 		public List<List<int>> species;
 
@@ -233,7 +233,7 @@ namespace xorc
 				int speciesChildrenN = getChildrenN((double)speciesRanking[i], (double)species.Count, numberOfChildren);
 				for(int j=0;j<speciesChildrenN;j++){
 					int parent0 = getParent(species[i].Count);
-					int parent1 = getParent(species[i].Count);
+					int parent1 = getParent(species[i].Count); 
 					//breed(parent0, parent1)
 					//add new genome to childrenGenomes
 				}
@@ -243,7 +243,22 @@ namespace xorc
 			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			//remove deleted genomes and update species list
 			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
+			List<Network> parentGenomes = new List<Network> ();
+			List<List<int>> newSpecies = new List<List<int>> ();
+			for (int i=0; i<species.Count; i++) {
+				List<int> tList = new List<int>();
+				newSpecies.Add(tList);
+				for(int j=0;j<species[i].Count;j++){
+					parentGenomes.Add(networks[species[i][j]]);
+					newSpecies[i].Add(parentGenomes.Count-1);
+				}
+			}
+			species = newSpecies;
+			networks = parentGenomes;
+			startingIndexOfNewGenomes = networks.Count;
+			for (int i=0; i<childrenGenomes; i++) {
+				networks.Add (childrenGenomes [i]);
+			}
 			
 		}
 

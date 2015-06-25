@@ -29,7 +29,13 @@ namespace xorc
 		public void reset()
 		{
 			value = 0.0;
-			inputCounter = inputEdges.Count;
+			int disabled = 0;
+			for (int i=0; i<inputEdges.Count; i++) {
+				if (!inputEdges [i].isEnabled) {
+					disabled++;
+				}
+			}
+			inputCounter = inputEdges.Count - disabled;
 			sumWV = 0.0;
 		}
 		
