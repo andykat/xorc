@@ -160,8 +160,11 @@ namespace xorc
 					if(neurons[outIndex].inputCounter < 1){
 						if(neurons[outIndex].inputCounter == 0){
 							//compute value
+
 							neurons[outIndex].computeValue();
-							
+							if(outIndex==2){
+								//Console.WriteLine(neurons[outIndex].sumWV+ ":" + neurons[outIndex].value);
+							}
 							//reduce counter
 							neurons[outIndex].inputCounter = finishedNeuronCounter;
 							
@@ -183,6 +186,7 @@ namespace xorc
 			for (int i=0; i<outputNeuronIndexes.Count; i++) {
 				//output node was calculated
 				if(neurons[outputNeuronIndexes[i]].inputCounter == finishedNeuronCounter){
+					//Console.WriteLine(outputNeuronIndexes[i] + ":" + neurons[outputNeuronIndexes[i]].value);
 					outputs.Add(neurons[outputNeuronIndexes[i]].value);
 				}
 				else
@@ -191,9 +195,9 @@ namespace xorc
 					return outputs;
 				}
 			}
-			for (int i=0; i<neurons.Count; i++) {
+			/*for (int i=0; i<neurons.Count; i++) {
 				Console.WriteLine (i + ":" + neurons [i].value);
-			}
+			}*/
 			return outputs;
 		}
 	}

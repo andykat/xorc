@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 namespace xorc
@@ -74,12 +75,36 @@ namespace xorc
 		public static Random rand = new Random();
 		public static void Main (string[] args)
 		{
+			FileStream ostrm;
+			StreamWriter writer;
+			TextWriter oldOut = Console.Out;
+			try
+			{
+				ostrm = new FileStream ("./Redirect.txt", FileMode.OpenOrCreate, FileAccess.Write);
+				writer = new StreamWriter (ostrm);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine ("Cannot open Redirect.txt for writing");
+				Console.WriteLine (e.Message);
+				return;
+			}
+			Console.SetOut (writer);
+			Console.WriteLine ("This is a line of text");
+			Console.WriteLine ("Everything written to Console.Write() or");
+			Console.WriteLine ("Console.WriteLine() will be written to a file");
+			Console.SetOut (oldOut);
+			writer.Close();
+			ostrm.Close();
+			Console.WriteLine ("Done");
+
 			//testNetwork ();
 			populationSetup ();
-			for (int i=0; i<10; i++) {
+			for (int i=0; i<100; i++) {
 				Console.WriteLine("i:" + i);
 				loop ();
 			}
+
 		}
 		public static void populationSetup(){
 			networks = new List<Network> ();
@@ -109,9 +134,11 @@ namespace xorc
 						bool temp = net.addEdge(j, k+inputN, hyperbolicTangent( rand.NextDouble() * 4.0 - 2.0), getInnovation(j, k+inputN));
 					}
 				}
+
+				networks.Add(net);
 			}
 
-			startingIndexOfNewGenomes = 3;
+			startingIndexOfNewGenomes = 0;
 
 			//initialize species
 			species = new List<List<int>> ();
@@ -122,6 +149,7 @@ namespace xorc
 		//One simulation loop (one generation)
 		public static void loop(){
 			//split genomes into species
+			//Console.WriteLine ("networksN:" + networks.Count);
 			for(int i=startingIndexOfNewGenomes;i<networks.Count;i++){
 				int speciesIndex = -1;
 				for(int j=0;j<species.Count;j++){
@@ -156,6 +184,7 @@ namespace xorc
 			//calculate networks' fitness
 			for (int i=0; i<networks.Count; i++) {
 				networks[i].fitness = xorFitness(i);
+				//Console.WriteLine("nf:" + networks[i].fitness);
 			}
 
 			//order the fitness of networks within species
@@ -194,8 +223,10 @@ namespace xorc
 				double sum = 0.0;
 				for(int j=0;j<species[i].Count;j++){
 					sum += networks[species[i][j]].fitness;
+					//Console.WriteLine("nf:" + networks[species[i][j]].fitness);
 				}
 				populationAverageFitness += sum;
+				//Console.WriteLine("speicescount:" + species[i].Count);
 				speciesAverageFitness.Add(sum / ((double)species[i].Count));
 			}
 
@@ -210,15 +241,18 @@ namespace xorc
 
 			//average population has not improved for a while, kill off all but top 2 species
 			if (allSpeciesLastFitnessImprovement > allSpeciesLastLimit) {
-				for(int i=0;i<species.Count - 2;i++){
-					species.RemoveAt(species.Count - 1);
-					speciesAverageFitness.RemoveAt(species.Count-1);
+				for(int i=2;i<species.Count;i++){
+					species.RemoveAt(i);
+					speciesAverageFitness.RemoveAt(i);
+					speciesLastMaxFitness.RemoveAt(i);
+					speciesLastFitnessImprovement.RemoveAt(i);
+					i--;
 				}
 			}
 
 			for (int i=0; i<species.Count; i++) {
 
-				speciesLastFitnessImprovement.Add(0);
+				//speciesLastFitnessImprovement.Add(0);
 				if(speciesAverageFitness[i] > speciesLastMaxFitness[i]){
 					speciesLastMaxFitness[i] = speciesAverageFitness[i];
 				}
@@ -239,7 +273,9 @@ namespace xorc
 			int[] speciesRanking = new int[species.Count];
 			for (int i=0; i<species.Count; i++) {
 				speciesRanking [i] = -1;
+				//Console.WriteLine("fitnessI:" + speciesAverageFitness[i]);
 			}
+			//Console.WriteLine ("sc:" + species.Count + "  safc:" + speciesAverageFitness.Count);
 			for (int i=0; i<species.Count; i++) {
 				double maxSpeciesFitness = -9999.0;
 				int maxSpeciesIndex = -1;
@@ -251,9 +287,16 @@ namespace xorc
 						}
 					}
 				}
+				//Console.WriteLine("msi:" + maxSpeciesIndex);
 				speciesRanking[maxSpeciesIndex] = species.Count - i;
 			}
-
+			double maxFitness = 0.0;
+			for (int i=0; i<species.Count; i++) {
+				if (networks [species [i] [0]].fitness > maxFitness) {
+					maxFitness = networks [species [i] [0]].fitness;
+				}
+			}
+			Console.WriteLine ("maxfitness:" + maxFitness);
 			double numberOfChildren = ((double)populationSize - ((double) remainingNumberOfGenomes));
 			List<Network> childrenGenomes = new List<Network> ();
 			//breed new genomes
@@ -337,7 +380,8 @@ namespace xorc
 				double rand01 = rand.NextDouble();
 				//perturb it! sore aru
 				if(rand01 < perturbChance){
-					childEdges[i].weight = childEdges[i].weight * (1.0 + (rand.NextDouble()*perturbPercent * 2.0 - perturbPercent));
+					childEdges[i].weight = childEdges[i].weight  + (rand.NextDouble()*perturbPercent * 2.0 - perturbPercent);
+					//childEdges[i].weight = childEdges[i].weight * (1.0 + (rand.NextDouble()*perturbPercent * 2.0 - perturbPercent));
 				}
 			}
 
@@ -477,6 +521,7 @@ namespace xorc
 			List<double> t3 = new List<double> ();
 			t3.Add (1.0);
 			t3.Add (1.0);
+			//Console.WriteLine("outputs:" + networks[index].calculateOutput(t0)[0] + ""  + networks[index].calculateOutput(t1)[0] + "" + networks[index].calculateOutput(t2)[0] + "" + networks[index].calculateOutput(t3)[0] + ":"+networks[index].calculateOutput(t3).Count); 
 			double fitness = xorFitnessSingle(0.0, 0.0, networks[index].calculateOutput(t0)[0]) + 
 							 xorFitnessSingle(1.0, 0.0, networks[index].calculateOutput(t1)[0]) +
 							 xorFitnessSingle(0.0, 1.0, networks[index].calculateOutput(t2)[0]) + 
@@ -512,7 +557,7 @@ namespace xorc
 		private static double xorFitnessSingle(double inputA, double inputB, double output)
 		{
 			double answer = inputA + inputB;
-			if (answer > 1.01) {
+			if (answer > 1.1) {
 				answer = 0.0;
 			}
 			return 1.0 / (1.0 + Math.Abs (answer - output));
@@ -536,36 +581,6 @@ namespace xorc
 			}
 			return b;
 		}
-
-		//deprecated
-		/*public static void testNetwork(){
-			Network a = new Network ();
-			for (int i=0; i<7; i++) {
-				Neuron n = new Neuron ();
-				a.addNeuron (n);
-			}
-			
-			a.addInput (0);
-			a.addInput (1);
-			a.addInput (2);
-			a.addOutput (3);
-			bool x = a.addEdge (1, 4, 0.1);
-			x = a.addEdge (2, 4, 0.2);
-			x = a.addEdge (1, 5, 0.3);
-			x = a.addEdge (0, 5, 0.4);
-			x = a.addEdge (4, 5, 0.5);
-			x = a.addEdge (5, 6, 0.6);
-			x = a.addEdge (6, 3, 0.7);
-			
-			List<double> inputs = new List<double> ();
-			inputs.Add (-1);
-			inputs.Add (0.5);
-			inputs.Add (1.0);
-			List<double> outputs = a.calculateOutput (inputs);
-			for (int i=0; i<outputs.Count; i++) {
-				Console.WriteLine ("i:" + outputs [i]);
-			}
-			Console.WriteLine ("done");
-		}*/
+		
 	}
 }
