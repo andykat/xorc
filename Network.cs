@@ -37,6 +37,13 @@ namespace xorc
 		}
 		
 		public bool addEdge(int input, int output, double weight, int innovation){
+			//check if edge is already added
+			for (int i=0; i<neurons[input].outputEdges.Count; i++) {
+				if (output == neurons [input].outputEdges [i].outNeuron) {
+					return false;
+				}
+			}
+
 			//find if this edge leads to a cycle
 			List<int> queue = new List<int> ();
 			queue.Add (output);
@@ -67,7 +74,9 @@ namespace xorc
 					return false;
 				}
 			}
-			
+
+
+
 			//add edge
 			Edge e = new Edge (input, output, weight, true, innovation);
 			edges.Add (e);
