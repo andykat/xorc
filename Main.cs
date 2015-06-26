@@ -10,6 +10,9 @@ namespace xorc
 		public static int outputN = 1;
 		public static int populationSize = 200;
 
+		//number of generations
+		public static int loopN = 400;
+
 		//number of species limits
 		public static int maxSpeciesN = 30;
 		public static int minSpeciesN = 5;
@@ -25,24 +28,30 @@ namespace xorc
 		public static double excessWeight = 1.0;
 		public static double disjointWeight = 1.0;
 		//classification differences are adjusted to keep the number of different Species stable.
-		public static double classificationDifferenceThreshold = 1.0;
-		public static double currentCDT = 1.0;
+		public static double classificationDifferenceThreshold = 3.0;
+		public static double currentCDT = 3.0;
 		public static double cdtMultiplier = 0.1;
 
 		//competition
-		public static double speciesKeep = 0.4; //percent of networks in a species that are not killed each generation. These species are also the ones that breed the new generation.
+		public static double speciesKeep = 0.34; //percent of networks in a species that are not killed each generation. These species are also the ones that breed the new generation.
 
 		//all different types of mutation chances
 		public static double mutateConnectionsChance = 0.25; //??
 		public static double perturbChance = 0.75;
 		public static double perturbPercent = 0.2;
+		public static double perturbUniformChance = 0.9;
 		public static double crossoverChance = 0.75;
-		public static double linkMutationChance = 0.05;
+		public static double linkMutationChance = 0.08;
 		public static double nodeMutationChance = 0.05;
 		public static double disableMutationKeep = 0.75;
-		public static double enableMutationChance = 0.2;
+		public static double enableMutationChance = 0.08;
 
 
+		//number of top genomes in a species to calculate the average
+		public static int averageFitnessGenomesN = 5;
+
+		//number of top species
+		public static int topDogKeep = 5;
 
 		/// ///////////////////////////////////////////////////////////////////
 		/// /// ///////////////////////////////////////////////////////////////
@@ -73,8 +82,10 @@ namespace xorc
 		public static int startingIndexOfNewGenomes = 0;
 
 		public static Random rand = new Random();
+		public static double globalMax = 0.0;
 		public static void Main (string[] args)
 		{
+			//be able to print commands to a file
 			FileStream ostrm;
 			StreamWriter writer;
 			TextWriter oldOut = Console.Out;
@@ -90,20 +101,33 @@ namespace xorc
 				return;
 			}
 			Console.SetOut (writer);
-			Console.WriteLine ("This is a line of text");
-			Console.WriteLine ("Everything written to Console.Write() or");
-			Console.WriteLine ("Console.WriteLine() will be written to a file");
+
 			Console.SetOut (oldOut);
 			writer.Close();
 			ostrm.Close();
 			Console.WriteLine ("Done");
 
-			//testNetwork ();
+			//Initialize variables
 			populationSetup ();
-			for (int i=0; i<100; i++) {
+
+			//run generations
+			for (int i=0; i<loopN; i++) {
 				Console.WriteLine("i:" + i);
 				loop ();
+				Console.WriteLine("neuronN:" + neuronN);
+				Console.WriteLine("globalMax:" + globalMax);
+				int totalNeurons = 0;
+				for(int j=0;j<species.Count;j++){
+					totalNeurons += species[j].Count;
+				}
+				double averageSpecies = ((double)totalNeurons)/((double)species.Count);
+				Console.WriteLine("speciesSize:" + averageSpecies);
+				if(species.Count<1){
+					break;
+				}
 			}
+
+			testAnswer ();
 
 		}
 		public static void populationSetup(){
@@ -113,7 +137,7 @@ namespace xorc
 			for(int i=0;i<populationSize;i++){
 				Network net = new Network();
 
-				//add inputs
+				//add xorFitnessinputs
 				for(int j=0;j<inputN;j++){
 					Neuron n = new Neuron();
 					net.addNeuron(n);
@@ -131,7 +155,7 @@ namespace xorc
 				for(int j=0;j<inputN;j++){
 					for(int k=0;k<outputN;k++){
 						//add a random weight between -2 and 2
-						bool temp = net.addEdge(j, k+inputN, hyperbolicTangent( rand.NextDouble() * 4.0 - 2.0), getInnovation(j, k+inputN));
+						bool temp = net.addEdge(j, k+inputN, randomEdgeWeight(), getInnovation(j, k+inputN));
 					}
 				}
 
@@ -149,7 +173,6 @@ namespace xorc
 		//One simulation loop (one generation)
 		public static void loop(){
 			//split genomes into species
-			//Console.WriteLine ("networksN:" + networks.Count);
 			for(int i=startingIndexOfNewGenomes;i<networks.Count;i++){
 				int speciesIndex = -1;
 				for(int j=0;j<species.Count;j++){
@@ -221,13 +244,14 @@ namespace xorc
 			List<double> speciesAverageFitness = new List<double> ();
 			for (int i=0; i<species.Count; i++) {
 				double sum = 0.0;
-				for(int j=0;j<species[i].Count;j++){
+				int tN = smaller(species[i].Count, averageFitnessGenomesN);
+				for(int j=0;j<tN;j++){
 					sum += networks[species[i][j]].fitness;
 					//Console.WriteLine("nf:" + networks[species[i][j]].fitness);
 				}
 				populationAverageFitness += sum;
 				//Console.WriteLine("speicescount:" + species[i].Count);
-				speciesAverageFitness.Add(sum / ((double)species[i].Count));
+				speciesAverageFitness.Add(sum / ((double)tN) + networks[species[i][0]].fitness);
 			}
 
 			populationAverageFitness /= ((double)networks.Count);
@@ -240,7 +264,7 @@ namespace xorc
 			}
 
 			//average population has not improved for a while, kill off all but top 2 species
-			if (allSpeciesLastFitnessImprovement > allSpeciesLastLimit) {
+			/*if (allSpeciesLastFitnessImprovement > allSpeciesLastLimit) {
 				for(int i=2;i<species.Count;i++){
 					species.RemoveAt(i);
 					speciesAverageFitness.RemoveAt(i);
@@ -248,10 +272,48 @@ namespace xorc
 					speciesLastFitnessImprovement.RemoveAt(i);
 					i--;
 				}
+			}*/
+
+			List<int> topDogs = new List<int>();
+
+			while (topDogs.Count < topDogKeep && topDogs.Count < species.Count) {
+				double tMaxFitness = -999.9;
+				int tMaxIndex = -1;
+				for (int i=0; i<species.Count; i++) {
+					bool tflag = false;
+					for(int j=0;j<topDogs.Count;j++){
+						if(i == topDogs[j]){
+							tflag = true;
+							break;
+						}
+					}
+					if(tflag){
+						continue;
+					}
+					if(networks[species[i][0]].fitness > tMaxFitness){
+						tMaxFitness = networks[species[i][0]].fitness;
+						tMaxIndex = i;
+					}
+
+				}
+				topDogs.Add(tMaxIndex);
+				//Console.WriteLine("tmi:" + tMaxIndex);
+				//Console.WriteLine("d:" + networks[species[tMaxIndex][0]].fitness);
 			}
 
-			for (int i=0; i<species.Count; i++) {
 
+			for (int i=0; i<species.Count; i++) {
+				bool tflag = false;
+				for(int j=0;j<topDogs.Count;j++){
+					if(i == topDogs[j]){
+						tflag = true;
+						break;
+					}
+				}
+				if(tflag){
+					speciesLastFitnessImprovement[i] = 0;
+					continue;
+				}
 				//speciesLastFitnessImprovement.Add(0);
 				if(speciesAverageFitness[i] > speciesLastMaxFitness[i]){
 					speciesLastMaxFitness[i] = speciesAverageFitness[i];
@@ -273,9 +335,8 @@ namespace xorc
 			int[] speciesRanking = new int[species.Count];
 			for (int i=0; i<species.Count; i++) {
 				speciesRanking [i] = -1;
-				//Console.WriteLine("fitnessI:" + speciesAverageFitness[i]);
 			}
-			//Console.WriteLine ("sc:" + species.Count + "  safc:" + speciesAverageFitness.Count);
+
 			for (int i=0; i<species.Count; i++) {
 				double maxSpeciesFitness = -9999.0;
 				int maxSpeciesIndex = -1;
@@ -287,9 +348,9 @@ namespace xorc
 						}
 					}
 				}
-				//Console.WriteLine("msi:" + maxSpeciesIndex);
 				speciesRanking[maxSpeciesIndex] = species.Count - i;
 			}
+
 			double maxFitness = 0.0;
 			for (int i=0; i<species.Count; i++) {
 				if (networks [species [i] [0]].fitness > maxFitness) {
@@ -297,6 +358,9 @@ namespace xorc
 				}
 			}
 			Console.WriteLine ("maxfitness:" + maxFitness);
+			if(maxFitness > globalMax){
+				globalMax = maxFitness;
+			}
 			double numberOfChildren = ((double)populationSize - ((double) remainingNumberOfGenomes));
 			List<Network> childrenGenomes = new List<Network> ();
 			//breed new genomes
@@ -305,7 +369,7 @@ namespace xorc
 				for(int j=0;j<speciesChildrenN;j++){
 					int parent0 = getParent(species[i].Count);
 					int parent1 = getParent(species[i].Count); 
-
+					//Console.WriteLine(parent0 + ":" + parent1 + " / " + species[i].Count);
 					Network childNet;
 					if(parent0 < parent1){
 						childNet = breed(species[i][parent0], species[i][parent1]);
@@ -319,8 +383,6 @@ namespace xorc
 					childrenGenomes.Add(childNet);
 				}
 			}
-
-
 			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			//remove deleted genomes and update species list
 			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -334,6 +396,69 @@ namespace xorc
 					newSpecies[i].Add(parentGenomes.Count-1);
 				}
 			}
+
+			//don't perturb top 5 parents
+			List<int> topDogParents = new List<int>();
+			
+			while (topDogParents.Count < topDogKeep) {
+				double tMaxFitness = -999.9;
+				int tMaxIndex = -1;
+				for (int i=0; i<parentGenomes.Count; i++) {
+					bool tflag = false;
+					for(int j=0;j<topDogParents.Count;j++){
+						if(i == topDogParents[j]){
+							tflag = true;
+							break;
+						}
+					}
+					if(tflag){
+						continue;
+					}
+					if(parentGenomes[i].fitness > tMaxFitness){
+						tMaxFitness = parentGenomes[i].fitness;
+						tMaxIndex = i;
+					}
+					
+				}
+				topDogParents.Add(tMaxIndex);
+			}
+
+
+			//pertub the parents
+			for (int i=0; i<parentGenomes.Count; i++) {
+				bool tflag = false;
+				for(int j=0;j<topDogParents.Count;j++){
+					if(i == topDogParents[j]){
+						tflag = true;
+						break;
+					}
+				}
+				if(tflag){
+					continue;
+				}
+				double rand01 = rand.NextDouble ();
+				if (rand01 < perturbChance) {
+					double perturbAmount = (rand.NextDouble () * perturbPercent * 2.0 - perturbPercent);
+					for(int j=0;j<parentGenomes[i].edges.Count;j++){
+						//perturb it! sore aru
+						if(rand.NextDouble() < perturbUniformChance){
+							parentGenomes[i].edges[j].weight = parentGenomes[i].edges[j].weight + perturbAmount;
+						}
+						else{
+							//give weight a new value;
+							parentGenomes[i].edges[j].weight = randomEdgeWeight();
+						}
+						if(!parentGenomes[i].edges[j].isEnabled){
+							rand01 = rand.NextDouble();
+							if(rand01 < enableMutationChance){
+								parentGenomes[i].edges[j].isEnabled = true;
+							}
+						}
+					}
+				}
+			}
+
+
 			species = newSpecies;
 			networks = parentGenomes;
 			startingIndexOfNewGenomes = networks.Count;
@@ -345,45 +470,61 @@ namespace xorc
 
 		private static Network breed(int parentA, int parentB)
 		{
-			List<Edge> childEdges = new List<Edge>();
+			List<Edge> childEdges = new List<Edge> ();
 			int AIndex = 0;
 			int BIndex = 0;
 
+			//merge genomes
 			while (AIndex < networks[parentA].edges.Count && BIndex < networks[parentB].edges.Count) {
-				if(networks[parentA].edges[AIndex].innovation == networks[parentB].edges[BIndex].innovation){
-					if(rand.Next(0,2) == 0){
-						childEdges.Add (networks[parentA].edges[AIndex]);
-					}
-					else{
-						childEdges.Add (networks[parentB].edges[BIndex]);
+				if (networks [parentA].edges [AIndex].innovation == networks [parentB].edges [BIndex].innovation) {
+					if (rand.Next (0, 2) == 0) {
+						Edge e = new Edge(networks[parentA].edges[AIndex].inNeuron,networks[parentA].edges[AIndex].outNeuron,networks[parentA].edges[AIndex].weight, networks[parentA].edges[AIndex].isEnabled,networks[parentA].edges[AIndex].innovation);
+						childEdges.Add (e);
+					} else {
+						Edge e = new Edge(networks[parentB].edges[BIndex].inNeuron,networks[parentB].edges[BIndex].outNeuron,networks[parentB].edges[BIndex].weight, networks[parentB].edges[BIndex].isEnabled,networks[parentB].edges[BIndex].innovation);
+						childEdges.Add (e);
 					}
 					AIndex++;
 					BIndex++;
-				}
-				else if(networks[parentA].edges[AIndex].innovation > networks[parentB].edges[BIndex].innovation){
+				} else if (networks [parentA].edges [AIndex].innovation > networks [parentB].edges [BIndex].innovation) {
 					BIndex++;
-				}
-				else{
-					childEdges.Add (networks[parentA].edges[AIndex]);
+				} else {
+					Edge e = new Edge(networks[parentA].edges[AIndex].inNeuron,networks[parentA].edges[AIndex].outNeuron,networks[parentA].edges[AIndex].weight, networks[parentA].edges[AIndex].isEnabled,networks[parentA].edges[AIndex].innovation);
+					childEdges.Add (e);
 					AIndex++;
 				}
 			}
 			//excess edges left over from dominant parent
 			if (BIndex == networks [parentB].edges.Count) {
 				for (int i=AIndex; i<networks[parentA].edges.Count; i++) {
-					childEdges.Add (networks [parentA].edges [i]);
+					Edge e = new Edge(networks[parentA].edges[i].inNeuron,networks[parentA].edges[i].outNeuron,networks[parentA].edges[i].weight, networks[parentA].edges[i].isEnabled,networks[parentA].edges[i].innovation);
+					childEdges.Add (e);
 				}
 			}
 
 			//perturb it
-			for (int i=0; i<childEdges.Count; i++) {
-				double rand01 = rand.NextDouble();
-				//perturb it! sore aru
-				if(rand01 < perturbChance){
-					childEdges[i].weight = childEdges[i].weight  + (rand.NextDouble()*perturbPercent * 2.0 - perturbPercent);
-					//childEdges[i].weight = childEdges[i].weight * (1.0 + (rand.NextDouble()*perturbPercent * 2.0 - perturbPercent));
+			double rand01 = rand.NextDouble ();
+			if (rand01 < perturbChance) {
+				double perturbAmount = (rand.NextDouble () * perturbPercent * 2.0 - perturbPercent);
+				for (int i=0; i<childEdges.Count; i++) {
+					//perturb it! sore aru
+					if(rand.NextDouble() < 0.9){
+						childEdges [i].weight = childEdges [i].weight + perturbAmount;
+					}
+					else{
+						//give weight a new value;
+						childEdges [i].weight = randomEdgeWeight();
+					}
+				
+					if (!childEdges [i].isEnabled) {
+						rand01 = rand.NextDouble ();
+						if (rand01 < enableMutationChance) {
+							childEdges [i].isEnabled = true;
+						}
+					}
 				}
 			}
+		
 
 			//create the child network
 			Network net = new Network ();
@@ -400,6 +541,11 @@ namespace xorc
 				net.addNeuron(n);
 				net.addOutput(inputN + j);
 			}
+			for (int j=0; j<(neuronN - inputN - outputN); j++) {
+				Neuron n = new Neuron ();
+				net.addNeuron (n);
+			}
+
 			for(int i=0;i<childEdges.Count;i++){
 				bool flag = net.addEdge(childEdges[i].inNeuron, childEdges[i].outNeuron, childEdges[i].weight, childEdges[i].innovation);
 				if(flag==false){
@@ -412,15 +558,20 @@ namespace xorc
 			double rand2 = rand.NextDouble();
 			if (rand2 < linkMutationChance) {
 				int tCount = 0;
-				while(tCount <10){
+				while(tCount <30){
 					int inputNode = rand.Next(0,neuronN - outputN);
 					if(inputNode >= inputN){
 						inputNode += outputN;
 					}
 					int outputNode = rand.Next (inputN, neuronN);
 					if(net.checkEdge(inputNode, outputNode)){
-						net.addEdge(inputNode, outputNode, hyperbolicTangent( rand.NextDouble() * 4.0 - 2.0), getInnovation(inputNode, outputNode));
-						tCount = 20;
+						//add edge if the edge is connected to the input. 
+						if(net.neurons[inputNode].inputEdges.Count > 0 || inputNode < inputN){
+							bool tb = net.addEdge(inputNode, outputNode, randomEdgeWeight(), getInnovation(inputNode, outputNode));
+							if(tb){
+								tCount = 20;
+							}
+						}
 					}
 					tCount++;
 				}
@@ -433,21 +584,35 @@ namespace xorc
 				while(tCount < 10){
 					int randomEdge = rand.Next(0,net.edges.Count);
 					bool flag = true;
-					for(int i=0;i<net.neurons[net.edges[randomEdge].inNeuron].outputEdges.Count;i++){ 
-						for(int j=0;j<net.neurons[net.edges[randomEdge].outNeuron].inputEdges.Count;j++){
-							if(net.neurons[net.edges[randomEdge].inNeuron].outputEdges[i] == net.neurons[net.edges[randomEdge].outNeuron].inputEdges[j]){
-								flag = false;
+					int randomEdgeIn = net.edges[randomEdge].inNeuron;
+					int randomEdgeOut = net.edges[randomEdge].outNeuron;
+					//check if there already exists a node that does the same thing
+					for(int i=0;i<innovationInputs.Count;i++){
+						if(innovationInputs[i] == randomEdgeIn){
+							for(int j=0;j<innovationInputs.Count;j++){
+								if(innovationInputs[j] == innovationOutputs[i]){
+									if(innovationOutputs[j] == randomEdgeOut){
+										flag = false;
+									}
+								}
 							}
 						}
 					}
+
 					//create new node
 					if(flag){
 						net.edges[randomEdge].isEnabled = false;
 						Neuron tN = new Neuron();
 						net.addNeuron(tN);
-						net.addEdge(net.edges[randomEdge].inNeuron, neuronN, hyperbolicTangent( rand.NextDouble() * 4.0 - 2.0), getInnovation(net.edges[randomEdge].inNeuron, neuronN));
-						net.addEdge(neuronN, net.edges[randomEdge].outNeuron, hyperbolicTangent( rand.NextDouble() * 4.0 - 2.0), getInnovation(neuronN, net.edges[randomEdge].outNeuron));
+
+						bool tb = net.addEdge(net.edges[randomEdge].inNeuron, neuronN, randomEdgeWeight(), getInnovation(net.edges[randomEdge].inNeuron, neuronN));
+						bool tc = net.addEdge(neuronN, net.edges[randomEdge].outNeuron, randomEdgeWeight(), getInnovation(neuronN, net.edges[randomEdge].outNeuron));
+						if(!tb || !tc){
+							Console.WriteLine("add Edge failed");
+						}
 						neuronN++;
+						tCount = 20;
+						net.printNetwork();
 					}
 					tCount++;
 				}
@@ -526,7 +691,7 @@ namespace xorc
 							 xorFitnessSingle(1.0, 0.0, networks[index].calculateOutput(t1)[0]) +
 							 xorFitnessSingle(0.0, 1.0, networks[index].calculateOutput(t2)[0]) + 
 							 xorFitnessSingle(1.0, 1.0, networks[index].calculateOutput(t3)[0]);
-			return fitness;
+			return fitness*fitness;
 		}
 
 		private static int getParent(int total){
@@ -541,7 +706,7 @@ namespace xorc
 			int sum = 0;
 			for (int i=1; i<total+1; i++) {
 				sum += i;
-				if (randomInt <= i) {
+				if (randomInt <= sum) {
 					return (total - i);
 				}
 			}
@@ -581,6 +746,38 @@ namespace xorc
 			}
 			return b;
 		}
-		
+
+		private static double randomEdgeWeight(){
+			return ((rand.NextDouble ()*4.0) - 2.0);
+			//return hyperbolicTangent (rand.NextDouble () * 4.0 - 2.0);
+		}
+		public static void testAnswer(){
+			//Test answer
+			double ttMaxFitness = -999.9;
+			int ttMaxIndex = -1;
+			for (int i=0; i<networks.Count; i++) {
+				if(networks[i].fitness > ttMaxFitness){
+					ttMaxFitness = networks[i].fitness;
+					ttMaxIndex = i;
+				}
+			}
+			List<double> t0 = new List<double> ();
+			t0.Add (0.0);
+			t0.Add (0.0);
+			List<double> t1 = new List<double> ();
+			t1.Add (1.0);
+			t1.Add (0.0);
+			List<double> t2 = new List<double> ();
+			t2.Add (0.0);
+			t2.Add (1.0);
+			List<double> t3 = new List<double> ();
+			t3.Add (1.0);
+			t3.Add (1.0);;
+			Console.WriteLine ("00:" + networks [ttMaxIndex].calculateOutput (t0)[0]);
+			Console.WriteLine ("01:" + networks [ttMaxIndex].calculateOutput (t1)[0]);
+			Console.WriteLine ("10:" + networks [ttMaxIndex].calculateOutput (t2)[0]);
+			Console.WriteLine ("11:" + networks [ttMaxIndex].calculateOutput (t3)[0]);
+			networks [ttMaxIndex].printNetwork ();
+		}
 	}
 }

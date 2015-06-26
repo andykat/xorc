@@ -13,20 +13,20 @@ using System.Collections.Generic;
 namespace xorc
 {
 	public class Neuron{
-		public List<Edge> inputEdges;
-		public List<Edge> outputEdges;
+		public List<int> inputEdges;
+		public List<int> outputEdges;
 		public int inputCounter;
 		public double sumWV;
 		public double value;
 		public Neuron()
 		{
-			inputEdges = new List<Edge> ();
-			outputEdges = new List<Edge> ();
+			inputEdges = new List<int> ();
+			outputEdges = new List<int> ();
 			value = 0.0;
 			sumWV = 0.0;
 			inputCounter = 0;
 		}
-		public void reset()
+		/*public void reset()
 		{
 			value = 0.0;
 			int disabled = 0;
@@ -37,13 +37,13 @@ namespace xorc
 			}
 			inputCounter = inputEdges.Count - disabled;
 			sumWV = 0.0;
-		}
+		}*/
 		
 		
-		public void addInput(Edge e){
+		public void addInput(int e){
 			inputEdges.Add (e);
 		}
-		public void addOutput(Edge e){
+		public void addOutput(int e){
 			outputEdges.Add (e);
 		}
 		

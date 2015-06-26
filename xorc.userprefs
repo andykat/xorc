@@ -1,11 +1,11 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
   <MonoDevelop.Ide.Workbench ActiveDocument="Main.cs">
     <Files>
-      <File FileName="Main.cs" Line="82" Column="36" />
-      <File FileName="Network.cs" Line="39" Column="77" />
-      <File FileName="Edge.cs" Line="5" Column="3" />
-      <File FileName="Neuron.cs" Line="39" Column="16" />
+      <File FileName="Main.cs" Line="11" Column="3" />
+      <File FileName="Network.cs" Line="1" Column="1" />
+      <File FileName="Edge.cs" Line="1" Column="1" />
+      <File FileName="Neuron.cs" Line="1" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
@@ -16,7 +16,13 @@
     </Pads>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
-    <BreakpointStore />
+    <BreakpointStore>
+      <Breakpoint file="/Users/Float/Documents/xorc/Main.cs" line="125" />
+      <Breakpoint file="/Users/Float/Documents/xorc/Main.cs" line="148" />
+      <Breakpoint file="/Users/Float/Documents/xorc/Main.cs" line="161" />
+      <Breakpoint file="/Users/Float/Documents/xorc/Main.cs" line="188" />
+      <Breakpoint file="/Users/Float/Documents/xorc/Main.cs" line="210" />
+    </BreakpointStore>
   </MonoDevelop.Ide.DebuggingService.Breakpoints>
   <MonoDevelop.Ide.DebuggingService.PinnedWatches />
 </Properties>
