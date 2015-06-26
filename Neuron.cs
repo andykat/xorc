@@ -55,8 +55,14 @@ namespace xorc
 		
 		public void computeValue()
 		{
+			if (sumWV > 350.0) {
+				sumWV = 350.0;
+			}
 			double e2z = Math.Pow (Math.E, 2.0 * sumWV);
-			value = (e2z - 1) / (e2z + 1);
+			value = (e2z - 1.0) / (e2z + 1.0);
+			//value = 1.0 / (1.0 + Math.Pow (Math.E, -4.9 * sumWV));
+
+			
 		}
 	}
 }
