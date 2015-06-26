@@ -76,7 +76,10 @@ namespace xorc
 		{
 			//testNetwork ();
 			populationSetup ();
-			loop ();
+			for (int i=0; i<10; i++) {
+				Console.WriteLine("i:" + i);
+				loop ();
+			}
 		}
 		public static void populationSetup(){
 			networks = new List<Network> ();
@@ -197,7 +200,7 @@ namespace xorc
 			}
 
 			populationAverageFitness /= ((double)networks.Count);
-
+			Console.WriteLine ("fitness:" + populationAverageFitness);
 			if ((populationAverageFitness / allSpeciesLastMaxFitness) > 1.0 + allSpeciesImprovementThreshold) {
 				allSpeciesLastFitnessImprovement = 0;
 				allSpeciesLastMaxFitness = populationAverageFitness;
